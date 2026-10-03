@@ -178,9 +178,7 @@ button, input { font: inherit; }
 .tray-slot { display: grid; gap: .4rem; min-width: 0; }
 .tray-slot label { font-size: .8rem; color: #436267; }
 .tray-slot select { width: 100%; min-height: 2.5rem; border: 1px solid #b9cfcd; border-radius: .5rem; background: white; color: #092d35; font-size: .9rem; }
-.empty-tray { margin-top: .65rem; width: 100%; }
 .tray-help { margin: .5rem 0 0; font-size: .85rem; color: #436267; }
-.discard-zone { margin-top: .65rem; padding: .8rem; border: 2px dashed #d57560; border-radius: .6rem; color: #9c3924; text-align: center; font-size: .85rem; }
 .flight-countdown { position: fixed; inset: 0; z-index: 100; background: rgba(9,45,53,.92); color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; }
 .flight-countdown span { font-size: 1.4rem; }.flight-countdown strong { font-size: 8rem; line-height: 1.2; color: #ffd166; }.flight-countdown p { font-size: 1rem; }
 .tray-slot [draggable="true"], .supplies [draggable="true"] { cursor: grab; }
