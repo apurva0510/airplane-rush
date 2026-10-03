@@ -1,7 +1,7 @@
 export const ITEMS = ["water", "coffee", "snack", "blanket"] as const;
 export type Item = (typeof ITEMS)[number];
 
-export type Player = { id: string; secret: string; name: string; color: string; row: number; inventory: Item[]; served: number };
+export type Player = { id: string; secret: string; name: string; color: string; row: number; aisle: number; inventory: Item[]; served: number };
 export type PassengerRequest = { id: string; seat: string; row: number; side: "left" | "right"; item: Item; createdAt: number; expiresAt: number };
 export type GameState = {
   code: string; phase: "lobby" | "playing" | "results"; hostId: string; level: number;
@@ -13,10 +13,22 @@ export type PublicGameState = Omit<GameState, "players"> & { players: PublicPlay
 
 const COLORS = ["#ff6b4a", "#09a6a6", "#7657d6", "#e7a51a", "#e85791", "#3974d4"];
 const ROUND_MS = 3 * 60 * 1000;
-const REQUEST_MS = 24 * 1000;
+const REQUEST_MS = 36 * 1000;
+
+export function cabinLayout(level = 1) {
+  const blocks = level >= 5 ? [3, 3, 3] : level >= 4 ? [3, 3] : level >= 3 ? [2, 2] : level >= 2 ? [1, 2] : [1, 1];
+  let index = 0;
+  return blocks.map((size) => Array.from({ length: size }, () => String.fromCharCode(65 + index++)));
+}
+
+export function cabinSeats(level = 1) {
+  const letters = cabinLayout(level).flat();
+  return Array.from({ length: 6 }, (_, index) => index + 1).flatMap((row) => letters.map((letter) => `${row}${letter}`));
+}
 
 export function ensurePassengerSatisfaction(state: GameState) {
-  state.passengerSatisfaction ??= Object.fromEntries(Array.from({ length: 6 }, (_, index) => index + 1).flatMap((row) => [`${row}A`, `${row}F`]).map((seat) => [seat, state.satisfaction]));
+  const existing = state.passengerSatisfaction ?? {};
+  state.passengerSatisfaction = Object.fromEntries(cabinSeats(state.level).map((seat) => [seat, existing[seat] ?? state.satisfaction]));
 }
 
 export function updatePassengerSatisfaction(state: GameState, seat: string, change: number) {
@@ -27,27 +39,26 @@ export function updatePassengerSatisfaction(state: GameState, seat: string, chan
 }
 
 export function makePlayer(name: string, index: number): Player {
-  return { id: crypto.randomUUID(), secret: crypto.randomUUID(), name: name.slice(0, 18), color: COLORS[index % COLORS.length], row: 0, inventory: [], served: 0 };
+  return { id: crypto.randomUUID(), secret: crypto.randomUUID(), name: name.slice(0, 18), color: COLORS[index % COLORS.length], row: 0, aisle: 0, inventory: [], served: 0 };
 }
 
 export function makeRoom(code: string, player: Player): GameState {
-  const state: GameState = { code, phase: "lobby", hostId: player.id, level: 1, players: [player], requests: [], satisfaction: 50, target: 70, passengerSatisfaction: {}, startedAt: null, endsAt: null, nextRequestAt: null, result: null };
-  delete (state as Partial<GameState>).passengerSatisfaction;
+  const state: GameState = { code, phase: "lobby", hostId: player.id, level: 1, players: [player], requests: [], satisfaction: 60, target: 65, passengerSatisfaction: {}, startedAt: null, endsAt: null, nextRequestAt: null, result: null };
   ensurePassengerSatisfaction(state);
   return state;
 }
 
 export function publicState(state: GameState, now = Date.now()): PublicGameState {
   ensurePassengerSatisfaction(state);
-  return { ...state, level: state.level ?? 1, players: state.players.map((player) => ({ id: player.id, name: player.name, color: player.color, row: player.row, inventory: player.inventory, served: player.served })), serverNow: now };
+  return { ...state, level: state.level ?? 1, players: state.players.map((player) => ({ id: player.id, name: player.name, color: player.color, row: player.row, aisle: player.aisle ?? 0, inventory: player.inventory, served: player.served })), serverNow: now };
 }
 
 export function startRound(state: GameState, now: number) {
   state.level ??= 1;
-  state.target = Math.min(95, 70 + (state.level - 1) * 5);
-  Object.assign(state, { phase: "playing", satisfaction: 50, startedAt: now + 3000, endsAt: now + 3000 + ROUND_MS, nextRequestAt: now + 3000, result: null, requests: [] });
-  state.passengerSatisfaction = Object.fromEntries(Array.from({ length: 6 }, (_, index) => index + 1).flatMap((row) => [`${row}A`, `${row}F`]).map((seat) => [seat, 50]));
-  state.players.forEach((player) => { player.row = 0; player.inventory = []; player.served = 0; });
+  state.target = Math.min(75, 65 + (state.level - 1));
+  Object.assign(state, { phase: "playing", satisfaction: 60, startedAt: now + 3000, endsAt: now + 3000 + ROUND_MS, nextRequestAt: now + 3000, result: null, requests: [] });
+  state.passengerSatisfaction = Object.fromEntries(cabinSeats(state.level).map((seat) => [seat, 60]));
+  state.players.forEach((player) => { player.row = 0; player.aisle = 0; player.inventory = []; player.served = 0; });
   tick(state, now);
 }
 
@@ -63,7 +74,7 @@ export function tick(state: GameState, now: number) {
   const expired = state.requests.filter((request) => request.expiresAt <= now);
   if (expired.length) {
     state.requests = state.requests.filter((request) => request.expiresAt > now);
-    expired.forEach((request) => updatePassengerSatisfaction(state, request.seat, -15));
+    expired.forEach((request) => updatePassengerSatisfaction(state, request.seat, -8));
     changed = true;
   }
   if (state.endsAt && now >= state.endsAt) {
@@ -71,16 +82,17 @@ export function tick(state: GameState, now: number) {
     state.result = state.satisfaction >= state.target ? "won" : "landed";
     return true;
   }
-  if ((state.nextRequestAt ?? Infinity) <= now && state.requests.length < 6) {
+  if ((state.nextRequestAt ?? Infinity) <= now && state.requests.length < Math.min(18, 4 + state.level * 2)) {
     const occupied = new Set(state.requests.map((request) => request.seat));
-    const seats = Array.from({ length: 6 }, (_, index) => index + 1).flatMap((row) => [`${row}A`, `${row}F`]).filter((seat) => !occupied.has(seat));
+    const seats = cabinSeats(state.level).filter((seat) => !occupied.has(seat));
     if (seats.length) {
       const seat = seats[choice(now, seats.length)];
       const row = Number.parseInt(seat, 10);
-      state.requests.push({ id: crypto.randomUUID(), seat, row, side: seat.endsWith("A") ? "left" : "right", item: ITEMS[choice(now + row * 31, ITEMS.length)], createdAt: now, expiresAt: now + Math.max(12000, REQUEST_MS - ((state.level ?? 1) - 1) * 2000) });
+      const patience = REQUEST_MS - Math.min(4, state.level - 1) * 1000 + (cabinLayout(state.level).length > 2 ? 6000 : 0);
+      state.requests.push({ id: crypto.randomUUID(), seat, row, side: seat.endsWith("A") ? "left" : "right", item: ITEMS[choice(now + row * 31, ITEMS.length)], createdAt: now, expiresAt: now + patience });
       changed = true;
     }
-    state.nextRequestAt = now + Math.max(2200, 6500 - state.players.length * 450 - ((state.level ?? 1) - 1) * 600);
+    state.nextRequestAt = now + Math.max(3500, 7500 - state.players.length * 400 - ((state.level ?? 1) - 1) * 400);
     changed = true;
   }
   return changed;

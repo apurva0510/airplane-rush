@@ -182,6 +182,18 @@ button, input { font: inherit; }
 .flight-countdown { position: fixed; inset: 0; z-index: 100; background: rgba(9,45,53,.92); color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; }
 .flight-countdown span { font-size: 1.4rem; }.flight-countdown strong { font-size: 8rem; line-height: 1.2; color: #ffd166; }.flight-countdown p { font-size: 1rem; }
 .seat-satisfaction { position: absolute; bottom: .65rem; right: .3rem; padding: .12rem .25rem; border-radius: .25rem; background: #092d35; color: white; font-size: .8rem; font-weight: 800; z-index: 2; }
+.cabin-expanded { min-width: 0; padding-inline: .65rem; }
+.cabin-scroll { overflow-x: auto; padding: .35rem 0; }
+.expanded-row { display: grid; grid-template-columns: var(--cabin-columns); min-height: 78px; gap: .3rem; }
+.expanded-layout { width: max(100%, 280px); min-width: max-content; }
+.cabin-block-pair { display: contents; }
+.seat-block { display: grid; gap: .3rem; min-width: 0; }
+.galley-label { grid-column: 1 / -1; display: grid; place-items: center; background: #dbe7e6; border-radius: .5rem; margin-block: .4rem; color: #436267; font-size: .75rem; }
+.layout-help { text-align: center; color: #436267; font-size: .85rem; margin: .4rem 0; }
+.row-crew { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 2px; }
+.row-sprite { display: flex; align-items: center; justify-content: center; border: 2px solid white; border-radius: .5rem; color: white; height: 30px; width: 26px; position: relative; }
+.row-sprite svg { width: 18px; }.row-sprite>span { position: absolute; bottom: -8px; background: #092d35; font-size: .6rem; border-radius: 2px; }
+.my-row-sprite { outline: 2px solid #ffd166; outline-offset: 1px; }
 .game-header { position: sticky; top: 0; z-index: 20; }
 .scorebar { position: sticky; top: 4.75rem; z-index: 19; }
 @media (max-width: 700px) { .game-header { position: static; }.scorebar { top: 0; } }

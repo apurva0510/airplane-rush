@@ -1,5 +1,5 @@
 import { env } from "cloudflare:workers";
-import { ITEMS, GameState, Item, makePlayer, makeRoom, publicState, startRound, tick, updatePassengerSatisfaction } from "@/lib/game";
+import { ITEMS, GameState, Item, makePlayer, makeRoom, publicState, startRound, tick, updatePassengerSatisfaction, cabinLayout } from "@/lib/game";
 
 export const runtime = "edge";
 type RoomRow = { state: string; version: number };
@@ -118,16 +118,18 @@ export async function POST(request: Request) {
           if (state.hostId !== player.id) return "Only the captain can reset the room.";
           if (state.phase !== "results") return "Wait until landing to start another flight.";
           state.level = (state.level ?? 1) + (state.result === "won" ? 1 : 0);
-          state.target = Math.min(95, 70 + (state.level - 1) * 5);
+          state.target = Math.min(75, 65 + (state.level - 1));
           Object.assign(state, { phase: "lobby", result: null, requests: [], startedAt: null, endsAt: null }); return;
         }
         if (state.phase !== "playing") return "The flight is not in progress.";
         if (state.startedAt && Date.now() < state.startedAt) return "Service begins after the countdown.";
         if (action === "move") {
           const row = Number(body.row);
+          const aisle = body.aisle === undefined ? (player.aisle ?? 0) : Number(body.aisle);
+          if (!Number.isInteger(aisle) || aisle < 0 || aisle >= cabinLayout(state.level).length - 1) return "Choose a valid aisle.";
           if (!Number.isInteger(row) || row < 0 || row > 6) return "Choose a valid cabin row.";
           if (Math.abs(row - player.row) > 1) return "Move one row at a time.";
-          player.row = row; return;
+          player.row = row; player.aisle = aisle; return;
         }
         if (action === "emptyTray") {
           player.inventory = []; return;
@@ -150,6 +152,8 @@ export async function POST(request: Request) {
           const request = state.requests.find((candidate) => candidate.id === String(body.requestId ?? ""));
           if (!request) return "That request is no longer active.";
           if (player.row !== request.row) return `Move to row ${request.row} first.`;
+          const block = cabinLayout(state.level).findIndex((letters) => letters.includes(request.seat.slice(-1)));
+          if (block !== (player.aisle ?? 0) && block !== (player.aisle ?? 0) + 1) return "Move to the aisle beside that passenger.";
           const itemIndex = player.inventory.indexOf(request.item);
           if (itemIndex === -1) return `You need ${request.item}.`;
           player.inventory.splice(itemIndex, 1);
