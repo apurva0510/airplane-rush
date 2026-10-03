@@ -1,5 +1,5 @@
 import { env } from "cloudflare:workers";
-import { ITEMS, GameState, Item, makePlayer, makeRoom, publicState, startRound, tick } from "@/lib/game";
+import { ITEMS, GameState, Item, makePlayer, makeRoom, publicState, startRound, tick, updatePassengerSatisfaction } from "@/lib/game";
 
 export const runtime = "edge";
 type RoomRow = { state: string; version: number };
@@ -155,7 +155,7 @@ export async function POST(request: Request) {
           player.inventory.splice(itemIndex, 1);
           player.served += 1;
           state.requests = state.requests.filter((candidate) => candidate.id !== request.id);
-          state.satisfaction = Math.min(100, state.satisfaction + 7 + Math.max(0, Math.floor((request.expiresAt - Date.now()) / 10000)));
+          updatePassengerSatisfaction(state, request.seat, 25 + Math.max(0, Math.floor((request.expiresAt - Date.now()) / 5000)));
           return;
         }
         return "Unknown cabin action.";
