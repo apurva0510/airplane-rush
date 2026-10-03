@@ -20,7 +20,7 @@ export function makePlayer(name: string, index: number): Player {
 }
 
 export function makeRoom(code: string, player: Player): GameState {
-  return { code, phase: "lobby", hostId: player.id, level: 1, players: [player], requests: [], satisfaction: 250, target: 850, startedAt: null, endsAt: null, nextRequestAt: null, result: null };
+  return { code, phase: "lobby", hostId: player.id, level: 1, players: [player], requests: [], satisfaction: 50, target: 70, startedAt: null, endsAt: null, nextRequestAt: null, result: null };
 }
 
 export function publicState(state: GameState, now = Date.now()): PublicGameState {
@@ -29,8 +29,8 @@ export function publicState(state: GameState, now = Date.now()): PublicGameState
 
 export function startRound(state: GameState, now: number) {
   state.level ??= 1;
-  state.target = 850 + (state.level - 1) * 150;
-  Object.assign(state, { phase: "playing", satisfaction: 250, startedAt: now, endsAt: now + ROUND_MS, nextRequestAt: now, result: null, requests: [] });
+  state.target = Math.min(95, 70 + (state.level - 1) * 5);
+  Object.assign(state, { phase: "playing", satisfaction: 50, startedAt: now + 3000, endsAt: now + 3000 + ROUND_MS, nextRequestAt: now + 3000, result: null, requests: [] });
   state.players.forEach((player) => { player.row = 0; player.inventory = []; player.served = 0; });
   tick(state, now);
 }
@@ -42,11 +42,12 @@ function choice(seed: number, length: number) {
 
 export function tick(state: GameState, now: number) {
   if (state.phase !== "playing") return false;
+  if (state.startedAt && now < state.startedAt) return false;
   let changed = false;
   const expired = state.requests.filter((request) => request.expiresAt <= now);
   if (expired.length) {
     state.requests = state.requests.filter((request) => request.expiresAt > now);
-    state.satisfaction = Math.max(0, state.satisfaction - expired.length * 30);
+    state.satisfaction = Math.max(0, state.satisfaction - expired.length * 3);
     changed = true;
   }
   if (state.endsAt && now >= state.endsAt) {

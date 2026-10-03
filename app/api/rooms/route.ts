@@ -20,7 +20,13 @@ function cleanName(value: unknown) {
 
 async function loadRoom(roomCode: string) {
   const row = await db().prepare("SELECT state, version FROM rooms WHERE code = ?").bind(roomCode).first<RoomRow>();
-  return row ? { state: JSON.parse(row.state) as GameState, version: row.version } : null;
+  if (!row) return null;
+  const state = JSON.parse(row.state) as GameState;
+  if (state.target > 100) {
+    state.satisfaction = Math.min(100, Math.round(state.satisfaction / state.target * 70));
+    state.target = Math.min(95, 70 + ((state.level ?? 1) - 1) * 5);
+  }
+  return { state, version: row.version };
 }
 
 async function saveRoom(roomCode: string, state: GameState, version: number) {
@@ -112,10 +118,11 @@ export async function POST(request: Request) {
           if (state.hostId !== player.id) return "Only the captain can reset the room.";
           if (state.phase !== "results") return "Wait until landing to start another flight.";
           state.level = (state.level ?? 1) + (state.result === "won" ? 1 : 0);
-          state.target = 850 + (state.level - 1) * 150;
+          state.target = Math.min(95, 70 + (state.level - 1) * 5);
           Object.assign(state, { phase: "lobby", result: null, requests: [], startedAt: null, endsAt: null }); return;
         }
         if (state.phase !== "playing") return "The flight is not in progress.";
+        if (state.startedAt && Date.now() < state.startedAt) return "Service begins after the countdown.";
         if (action === "move") {
           const row = Number(body.row);
           if (!Number.isInteger(row) || row < 0 || row > 6) return "Choose a valid cabin row.";
@@ -148,7 +155,7 @@ export async function POST(request: Request) {
           player.inventory.splice(itemIndex, 1);
           player.served += 1;
           state.requests = state.requests.filter((candidate) => candidate.id !== request.id);
-          state.satisfaction += 70 + Math.max(0, Math.floor((request.expiresAt - Date.now()) / 1000));
+          state.satisfaction = Math.min(100, state.satisfaction + 7 + Math.max(0, Math.floor((request.expiresAt - Date.now()) / 10000)));
           return;
         }
         return "Unknown cabin action.";
