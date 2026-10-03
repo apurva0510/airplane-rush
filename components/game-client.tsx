@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { Item, ITEMS, PassengerRequest, PublicGameState, cabinLayout } from "@/lib/game";
+import { CrewPass, ensureCrewPassport } from "@/components/crew-pass";
 
 type Identity = { code: string; playerId: string; secret: string };
 type WebTool = { name: string; title: string; description: string; inputSchema: object; annotations: { readOnlyHint: boolean; untrustedContentHint: boolean }; execute: (input: Record<string, unknown>) => Promise<unknown> };
@@ -63,6 +64,7 @@ export function GameClient() {
   const enter = async (operation: "create" | "join") => {
     setBusy(true); setError("");
     try {
+      await ensureCrewPassport();
       const data = await request({ operation, name, code: joinCode.toUpperCase() });
       const nextIdentity = { code: data.state!.code, playerId: data.playerId!, secret: data.secret! };
       localStorage.setItem("airplane-rush-identity", JSON.stringify(nextIdentity));
@@ -122,7 +124,8 @@ export function GameClient() {
     setIdentity(null); setState(null); setError("");
   };
 
-  if (!state || !identity) return <Welcome name={name} setName={setName} joinCode={joinCode} setJoinCode={setJoinCode} busy={busy} error={error} onEnter={enter} />;
+  const passport = <CrewPass state={state} identity={identity} />;
+  if (!state || !identity) return <>{passport}<Welcome name={name} setName={setName} joinCode={joinCode} setJoinCode={setJoinCode} busy={busy} error={error} onEnter={enter} /></>;
   const me = state.players.find((player) => player.id === identity.playerId);
   if (!me) return <Welcome name={name} setName={setName} joinCode={joinCode} setJoinCode={setJoinCode} busy={busy} error="This crew pass is no longer in the room." onEnter={enter} />;
 
@@ -131,9 +134,9 @@ export function GameClient() {
     setCopied(true); window.setTimeout(() => setCopied(false), 1500);
   };
 
-  if (state.phase === "lobby") return <Lobby state={state} meId={me.id} busy={busy} error={error} copied={copied} onCopy={copyCode} onStart={() => act("start")} onLeave={leave} />;
-  if (state.phase === "results") return <Results state={state} meId={me.id} busy={busy} error={error} onRematch={() => act("rematch")} onLeave={leave} />;
-  return <Flight state={state} meId={me.id} now={now} busy={busy} error={error} onAction={act} />;
+  if (state.phase === "lobby") return <>{passport}<Lobby state={state} meId={me.id} busy={busy} error={error} copied={copied} onCopy={copyCode} onStart={() => act("start")} onLeave={leave} /></>;
+  if (state.phase === "results") return <>{passport}<Results state={state} meId={me.id} busy={busy} error={error} onRematch={() => act("rematch")} onLeave={leave} /></>;
+  return <>{passport}<Flight state={state} meId={me.id} now={now} busy={busy} error={error} onAction={act} /></>;
 }
 
 function Brand() { return <div className="brand"><span className="brand-mark"><Plane size={20} /></span><span>Airplane Rush</span></div>; }

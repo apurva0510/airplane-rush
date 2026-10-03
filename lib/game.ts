@@ -1,14 +1,14 @@
 export const ITEMS = ["water", "coffee", "snack", "blanket"] as const;
 export type Item = (typeof ITEMS)[number];
 
-export type Player = { id: string; secret: string; name: string; color: string; row: number; aisle: number; inventory: Item[]; served: number };
+export type Player = { id: string; secret: string; profileId?: string; name: string; color: string; row: number; aisle: number; inventory: Item[]; served: number };
 export type PassengerRequest = { id: string; seat: string; row: number; side: "left" | "right"; item: Item; createdAt: number; expiresAt: number };
 export type GameState = {
   code: string; phase: "lobby" | "playing" | "results"; hostId: string; level: number;
   players: Player[]; requests: PassengerRequest[]; satisfaction: number; target: number; passengerSatisfaction: Record<string, number>;
   startedAt: number | null; endsAt: number | null; nextRequestAt: number | null; result: "won" | "landed" | null;
 };
-export type PublicPlayer = Omit<Player, "secret">;
+export type PublicPlayer = Omit<Player, "secret" | "profileId">;
 export type PublicGameState = Omit<GameState, "players"> & { players: PublicPlayer[]; serverNow: number };
 
 const COLORS = ["#ff6b4a", "#09a6a6", "#7657d6", "#e7a51a", "#e85791", "#3974d4"];

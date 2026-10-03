@@ -25,3 +25,10 @@ npm run build
 
 See [PLAN.md](./PLAN.md) for the rules, architecture, milestones, and optional
 post-MVP ideas.
+# Crew progression
+
+Browser crew passes are authenticated with an HttpOnly cookie; coins, scores, owned colors, and milestones live in D1. Progress is browser-bound (no account/login or cross-device recovery yet). Player names and completed-flight scores appear publicly on the leaderboard.
+
+Completed flights earn 10 coins, each delivery adds 5, and a level clear adds 20. Lifetime score awards 100 per delivery, 500 per clear, and 50 per completed level. Cosmetics never change gameplay. Rewards use an atomic, unique per-profile/per-round ledger to prevent duplicate payouts. The server settles every player's rewards at landing and before rematch.
+
+Run `node scripts/verify-progression.mjs` against the local dev server after applying migrations to check rewards, duplicate claims, ownership, spending, leaderboard, and cosmetics. The script creates local-only QA fixtures; it cannot target production.
