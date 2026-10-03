@@ -119,6 +119,17 @@ export async function POST(request: Request) {
           if (Math.abs(row - player.row) > 1) return "Move one row at a time.";
           player.row = row; return;
         }
+        if (action === "emptyTray") {
+          player.inventory = []; return;
+        }
+        if (action === "discard" || action === "replace") {
+          const slot = Number(body.slot);
+          if (!Number.isInteger(slot) || slot < 0 || slot >= player.inventory.length) return "Choose an occupied tray slot.";
+          if (action === "discard") { player.inventory.splice(slot, 1); return; }
+          const item = String(body.item ?? "") as Item;
+          if (!ITEMS.includes(item)) return "Choose a valid replacement supply.";
+          player.inventory[slot] = item; return;
+        }
         if (action === "take") {
           const item = String(body.item ?? "") as Item;
           if (!ITEMS.includes(item)) return "That supply is unavailable.";
