@@ -130,10 +130,10 @@ progress. These features do not prove the central multiplayer experience.
 
 Before implementation begins, choose:
 
-1. Tap-to-move on a grid or continuous movement with directional controls.
+1. Keyboard movement on laptops with large touch controls on phones.
 2. Top-down cabin view or a simplified side/isometric view.
 3. The multiplayer runtime and hosting stack supported by the build environment.
 4. A temporary visual style: clean colored shapes first, illustrated art later.
 
-The recommended defaults are grid-based tap-to-move, a top-down cabin, and
-simple shapes during the synchronization prototype.
+The selected defaults are keyboard-first row movement with touch fallbacks, a
+top-down cabin, and simple character sprites during the synchronization prototype.
