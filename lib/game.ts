@@ -4,7 +4,7 @@ export type Item = (typeof ITEMS)[number];
 export type Player = { id: string; secret: string; name: string; color: string; row: number; inventory: Item[]; served: number };
 export type PassengerRequest = { id: string; seat: string; row: number; side: "left" | "right"; item: Item; createdAt: number; expiresAt: number };
 export type GameState = {
-  code: string; phase: "lobby" | "playing" | "results"; hostId: string;
+  code: string; phase: "lobby" | "playing" | "results"; hostId: string; level: number;
   players: Player[]; requests: PassengerRequest[]; satisfaction: number; target: number;
   startedAt: number | null; endsAt: number | null; nextRequestAt: number | null; result: "won" | "landed" | null;
 };
@@ -20,14 +20,16 @@ export function makePlayer(name: string, index: number): Player {
 }
 
 export function makeRoom(code: string, player: Player): GameState {
-  return { code, phase: "lobby", hostId: player.id, players: [player], requests: [], satisfaction: 250, target: 850, startedAt: null, endsAt: null, nextRequestAt: null, result: null };
+  return { code, phase: "lobby", hostId: player.id, level: 1, players: [player], requests: [], satisfaction: 250, target: 850, startedAt: null, endsAt: null, nextRequestAt: null, result: null };
 }
 
 export function publicState(state: GameState, now = Date.now()): PublicGameState {
-  return { ...state, players: state.players.map((player) => ({ id: player.id, name: player.name, color: player.color, row: player.row, inventory: player.inventory, served: player.served })), serverNow: now };
+  return { ...state, level: state.level ?? 1, players: state.players.map((player) => ({ id: player.id, name: player.name, color: player.color, row: player.row, inventory: player.inventory, served: player.served })), serverNow: now };
 }
 
 export function startRound(state: GameState, now: number) {
+  state.level ??= 1;
+  state.target = 850 + (state.level - 1) * 150;
   Object.assign(state, { phase: "playing", satisfaction: 250, startedAt: now, endsAt: now + ROUND_MS, nextRequestAt: now, result: null, requests: [] });
   state.players.forEach((player) => { player.row = 0; player.inventory = []; player.served = 0; });
   tick(state, now);
@@ -52,21 +54,16 @@ export function tick(state: GameState, now: number) {
     state.result = state.satisfaction >= state.target ? "won" : "landed";
     return true;
   }
-  if (state.satisfaction >= state.target) {
-    state.phase = "results";
-    state.result = "won";
-    return true;
-  }
   if ((state.nextRequestAt ?? Infinity) <= now && state.requests.length < 6) {
     const occupied = new Set(state.requests.map((request) => request.seat));
     const seats = Array.from({ length: 6 }, (_, index) => index + 1).flatMap((row) => [`${row}A`, `${row}F`]).filter((seat) => !occupied.has(seat));
     if (seats.length) {
       const seat = seats[choice(now, seats.length)];
       const row = Number.parseInt(seat, 10);
-      state.requests.push({ id: crypto.randomUUID(), seat, row, side: seat.endsWith("A") ? "left" : "right", item: ITEMS[choice(now + row * 31, ITEMS.length)], createdAt: now, expiresAt: now + REQUEST_MS });
+      state.requests.push({ id: crypto.randomUUID(), seat, row, side: seat.endsWith("A") ? "left" : "right", item: ITEMS[choice(now + row * 31, ITEMS.length)], createdAt: now, expiresAt: now + Math.max(12000, REQUEST_MS - ((state.level ?? 1) - 1) * 2000) });
       changed = true;
     }
-    state.nextRequestAt = now + Math.max(3200, 6500 - state.players.length * 450);
+    state.nextRequestAt = now + Math.max(2200, 6500 - state.players.length * 450 - ((state.level ?? 1) - 1) * 600);
     changed = true;
   }
   return changed;

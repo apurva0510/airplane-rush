@@ -110,6 +110,9 @@ export async function POST(request: Request) {
         }
         if (action === "rematch") {
           if (state.hostId !== player.id) return "Only the captain can reset the room.";
+          if (state.phase !== "results") return "Wait until landing to start another flight.";
+          state.level = (state.level ?? 1) + (state.result === "won" ? 1 : 0);
+          state.target = 850 + (state.level - 1) * 150;
           Object.assign(state, { phase: "lobby", result: null, requests: [], startedAt: null, endsAt: null }); return;
         }
         if (state.phase !== "playing") return "The flight is not in progress.";
@@ -133,7 +136,6 @@ export async function POST(request: Request) {
         if (action === "take") {
           const item = String(body.item ?? "") as Item;
           if (!ITEMS.includes(item)) return "That supply is unavailable.";
-          if (player.row !== 0) return "Return to the galley to collect supplies.";
           if (player.inventory.length >= 2) return "Your hands are full.";
           player.inventory.push(item); return;
         }
